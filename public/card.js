@@ -245,15 +245,85 @@
   }
 
   // Sends a video to the server as raw bytes and resolves with a one-time token the card will carry.
-  var VIDEO_LIMIT = 12 * 1024 * 1024;
+  var VIDEO_LIMIT = 25 * 1024 * 1024;
   function uploadVideo(file) {
     if (!file || !/^video\//.test(file.type || '')) return Promise.reject(new Error('Видео сонгоно уу.'));
-    if (file.size > VIDEO_LIMIT) return Promise.reject(new Error('Видео 12MB-аас бага байх ёстой. Богино бичлэг сонгоно уу.'));
+    if (file.size > VIDEO_LIMIT) return Promise.reject(new Error('Видео 25MB-аас бага байх ёстой. Богино бичлэг сонгоно уу.'));
     return fetch('/api/uploads/video', { method: 'POST', headers: { 'Content-Type': file.type }, body: file }).then(function (r) {
       return r.json().then(function (j) { if (!r.ok) throw new Error((j && j.error) || 'Видео оруулж чадсангүй.'); return j.token; });
     });
   }
   function videoUrl(cardId, has) { return has ? '/api/cards/' + cardId + '/video' : ''; }
+
+  // Suggested messages: a small menu under the message box. Tapping one fills the box; the person can still edit it.
+  var SUGGEST = {
+    love: ['Чамайг хайрлах сэтгэл минь өдөр ирэх тусам нэмэгдсээр байна.', 'Чи миний амьдралын хамгийн сайхан бэлэг мөн.', 'Хаана ч, хэзээ ч чамайгаа санасаар байх болно.'],
+    bday: ['Төрсөн өдрийн мэнд хүргэе! Бүх хүсэл мөрөөдөл чинь биелэх болтугай.', 'Шинэ нас чинь аз жаргал, эрүүл энхээр дүүрэн байг.', 'Өнөөдөр чиний өдөр, хамгийн их баяр хөөрийг мэдэр!'],
+    letter: ['Чамд хэлэх үг олон байсан ч бичиж үлдээхийг хүслээ.', 'Өдөр бүр чамайг дурсан бодож явдаг шүү.', 'Энэ захидал чамд сэтгэлийн дулааныг минь дамжуулах болтугай.'],
+    cheers: ['Амжилт гаргасан чамд чин сэтгэлээсээ баяр хүргэе!', 'Чиний хичээл зүтгэл үр дүнгээ өгсөнд маш их баярлаж байна.', 'Цаашдын бүхий л ажил чинь бүтэмжтэй байх болтугай.'],
+    thanks: ['Надад хийсэн бүх сайн сайхан зүйлд чинь чин сэтгэлээсээ баярлалаа.', 'Чи миний хажууд байдаг нь надад маш том хүч.', 'Талархлаа үгээр илэрхийлэхэд бэрх ч сэтгэлээсээ баярлаж байна.'],
+    night: ['Сайхан амраарай, амар амгалан нойр чинь хүрэх болтугай.', 'Өнөөдрийн ядаргаагаа мартаад тайван унт.', 'Сайхан мөрөөдөл зүүдлээрэй, маргааш уулзъя.'],
+    sunny: ['Өдрийн мэнд! Өнөөдөр чамд сайхан өдөр болог.', 'Нарлаг сэтгэлтэй, инээмсэглэлтэй өдөр өнгөрүүлээрэй.', 'Өглөө бүр чамд шинэ боломж, шинэ баяр авчирах болтугай.'],
+    gift: ['Энэ бэлгийг сэтгэлээсээ чамд зориулав.', 'Бяцхан бэлэг боловч сэтгэл минь дүүрэн байгаа.', 'Чамд таалагдана гэж найдаж байна.'],
+    tsagaan: ['Цагаан сарын мэнд хүргэе! Идээ ундаа элбэг, амгалан тайван жил болтугай.', 'Шинэ жилдээ амар амгалан, аз жаргалтай, эрүүл энхтэй байгаарай.', 'Өтгөн цагаан сарын мэнд! Эрүүл энх, элбэг дэлбэг байгаарай.'],
+    newyear: ['Шинэ жилийн мэнд хүргэе! Шинэ онд бүх хүсэл чинь биелэх болтугай.', 'Шинэ жил чамд аз жаргал, эрүүл мэнд авчрах болтугай.', 'Ирэх жил урамтай, амжилттай жил байх болтугай.'],
+    wedding: ['Хос бүрэлдсэн танд аз жаргал хүсье!', 'Та хоёрын хайр насан туршдаа хүчтэй байх болтугай.', 'Гэр бүл болсон танд чин сэтгэлээсээ баяр хүргэе.'],
+    graduation: ['Төгссөн танд чин сэтгэлээсээ баяр хүргэе!', 'Энэ бол шинэ замын эхлэл. Амжилт хүсье!', 'Чиний хичээл зүтгэлд бахархаж байна.'],
+    mother: ['Ээж минь, чамд маш их хайртай шүү.', 'Таны халуун дулаан сэтгэлд үргэлж талархдаг.', 'Ээж минь эрүүл энхтэй, аз жаргалтай байгаарай.'],
+    friend: ['Найз минь, чамтай нөхөрлөж байгаадаа аз жаргалтай байна.', 'Хамтдаа инээж баярласан өдрүүд минь үргэлж санагддаг.', 'Чам шиг найзтай болсондоо баяртай байна.'],
+    getwell: ['Эрт эдгэрээрэй, чамайг бодож байна.', 'Эрүүл мэнд чинь удахгүй сайжрах болтугай.', 'Бүх зүйл сайхан болно, хүч оруулаад байна.'],
+    baby: ['Хүүхэдтэй болсонд чинь чин сэтгэлээсээ баяр хүргэе!', 'Бяцхан хүүхэд чинь эрүүл энхтэй, аз жаргалтай өсөх болтугай.', 'Гэр бүлд тань шинэ жаргал ирсэнд баяртай байна.']
+  };
+  (function () {
+    if (!g.document) return;
+    var ta = g.document.getElementById('message'), tiles = g.document.getElementById('types');
+    if (!ta || !tiles) return;
+    var st = g.document.createElement('style');
+    st.textContent = '.sc-sug{margin:-4px 0 14px;border:1px solid var(--line);border-radius:12px;background:var(--soft);padding:2px 12px}' +
+      '.sc-sug summary{cursor:pointer;font-weight:700;font-size:.92rem;padding:10px 0;list-style:none}' +
+      '.sc-sug summary::-webkit-details-marker{display:none}' +
+      '.sc-sug summary::after{content:" ▾";color:var(--muted)}' +
+      '.sc-sug[open] summary::after{content:" ▴"}' +
+      '.sc-sug .sc-list{display:flex;flex-direction:column;gap:8px;padding:0 0 12px}' +
+      '.sc-sug .sc-pick{font:inherit;font-size:.92rem;text-align:left;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;overflow-wrap:anywhere}' +
+      '.sc-sug .sc-pick:hover{border-color:var(--accent)}';
+    g.document.head.appendChild(st);
+    var wrap = g.document.createElement('details');
+    wrap.className = 'sc-sug';
+    var sum = g.document.createElement('summary');
+    sum.textContent = 'Санал болгох үгс';
+    var list = g.document.createElement('div');
+    list.className = 'sc-list';
+    wrap.appendChild(sum); wrap.appendChild(list);
+    var field = ta.parentNode;
+    field.parentNode.insertBefore(wrap, field.nextSibling);
+    var current = '';
+    function currentKey() {
+      var on = tiles.querySelector('[aria-pressed="true"] .tile-name');
+      var label = on ? on.textContent : '';
+      for (var k in TEMPLATES) if (TEMPLATES[k].label === label) return k;
+      return 'love';
+    }
+    function fill() {
+      var k = currentKey();
+      if (k === current) return;
+      current = k;
+      list.textContent = '';
+      (SUGGEST[k] || []).forEach(function (txt) {
+        var b = g.document.createElement('button');
+        b.type = 'button'; b.className = 'sc-pick'; b.textContent = txt;
+        b.addEventListener('click', function () {
+          var max = ta.maxLength > 0 ? ta.maxLength : 300;
+          ta.value = txt.slice(0, max);
+          ta.dispatchEvent(new g.Event('input', { bubbles: true }));
+          ta.focus();
+        });
+        list.appendChild(b);
+      });
+    }
+    new g.MutationObserver(fill).observe(tiles, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
+    fill();
+  })();
 
   g.SC = {
     uploadVideo: uploadVideo, videoUrl: videoUrl,
