@@ -104,7 +104,7 @@ function validateImages(list, max) {
 }
 
 /* One short video per card. It is uploaded first as raw bytes (not JSON), checked by its first bytes, then attached to the card by a one-time token. */
-const VIDEO_MAX = 12 * 1024 * 1024;
+const VIDEO_MAX = 25 * 1024 * 1024;
 const VIDEO_TYPES = { mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime' };
 function sniffVideo(buf) {
   if (buf.length > 16 && buf.slice(4, 8).toString('latin1') === 'ftyp') return buf.slice(8, 12).toString('latin1') === 'qt  ' ? 'mov' : 'mp4';
@@ -198,7 +198,6 @@ function rateLimited(ip, max, windowMs) {
   return false;
 }
 setInterval(() => { const now = Date.now(); hits.forEach((arr, ip) => { if (!arr.some((t) => now - t < 3600e3)) hits.delete(ip); }); }, 600e3).unref();
-
 // Wrong admin keys are counted per IP so the key cannot be guessed by trying again and again.
 const adminFails = new Map();
 function adminBlocked(ip) {
@@ -303,9 +302,9 @@ async function handle(req, res) {
   if (m === 'POST' && p === '/api/uploads/video') {
     if (rateLimited(clientIp(req) + ':vid', 6, 10 * 60 * 1000)) return send(res, 429, { error: 'Хэт олон хүсэлт илгээлээ. Түр хүлээгээд дахин оролдоно уу.' });
     const len = Number(req.headers['content-length'] || 0);
-    if (!len || len > VIDEO_MAX) return send(res, 413, { error: 'Видео 12MB-аас бага байх ёстой.' });
+    if (!len || len > VIDEO_MAX) return send(res, 413, { error: 'Видео 25MB-аас бага байх ёстой.' });
     let buf;
-    try { buf = await readBuffer(req, VIDEO_MAX); } catch (e) { return send(res, 413, { error: 'Видео 12MB-аас бага байх ёстой.' }); }
+    try { buf = await readBuffer(req, VIDEO_MAX); } catch (e) { return send(res, 413, { error: 'Видео 25MB-аас бага байх ёстой.' }); }
     const ext = sniffVideo(buf);
     if (!ext) return send(res, 400, { error: 'Зөвхөн MP4, MOV, WebM видео оруулна уу.' });
     const token = crypto.randomBytes(16).toString('hex');
